@@ -8,24 +8,23 @@ class Board:
         self.columns = cols
         self.bombs = 0
         self.bombs_array = []
-        self.board = []
+        self.shown_board = []
+        self.hid_board = []
         self.build()
 
     def build(self):
         """Build the board as an array"""
-        if (self.rows * self.columns) <= 10 or (self.rows * self.columns) > 480:
-            print("The number is not valid, Enter one of the valid sets: 8 x 10 | 14 x 18 | 20 x 24")
-            self.build()
-
         for i in range(self.rows):
-            self.board.append([])
+            self.shown_board.append([])
+            self.hid_board.append([])
             for j in range(self.columns):
-                self.board[i].append(int(0))
+                self.hid_board[i].append(int(0))
+                self.shown_board[i].append("-")
 
-    def show_board(self):
+    def show_board(self, board):
         """Prints the board in a good layout"""
         # print the header row
-        print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+        # print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
         print("  n  ||", end="")
         for c in range(self.columns):
             if len(str(c+1)) ==1:
@@ -46,7 +45,7 @@ class Board:
                 print("  {} ||".format(r+1), end="")
 
             for c in range(self.columns):
-                print("  {}  |".format(self.board[r][c]), end="")
+                print("  {}  |".format(board[r][c]), end="")
             print("\n-----++", end="")
             for c in range(self.columns):
                 print("-----+", end="")
@@ -68,17 +67,17 @@ class Board:
 
             if [r, c] not in self.bombs_array:
                 self.bombs_array.append([r, c])
-        print(self.bombs_array)
+        # print(self.bombs_array)
 
         # place the bombs
         for b in self.bombs_array:
-            self.board[b[0]][b[1]] = "*"
+            self.hid_board[b[0]][b[1]] = "*"
         self.insert_numbers()
 
     def insert_numbers(self):
         for r in range(self.rows):
             for c in range(self.columns):
-                if self.board[r][c] == "*":
+                if self.hid_board[r][c] == "*":
                     inc = [-1, 0, 1]
                     for i in inc:
                         for j in inc:
@@ -87,28 +86,40 @@ class Board:
                             if (row_index < 0) or (row_index >= self.rows) \
                                     or (col_index < 0) or (col_index >= self.columns) or (i == 0 and j == 0):
                                 continue
-                            if self.board[row_index][col_index] == "*":
+                            if self.hid_board[row_index][col_index] == "*":
                                 continue
-                            self.board[row_index][col_index] += 1
+                            self.hid_board[row_index][col_index] += 1
+
+    def check_win(self):
+        for r in self.rows:
+            for c in self.columns:
+                if self.shown_board[r][c] == self.hid_board[r][c]:
+                    continue
+                else:
+                    if self.hid_board[r][c] == "*":
+                        continue
+                    else:
+                        return False
+        return True
 
 
 class Player:
     def __init__(self, name):
         self.name = name
         size = self.start_game()
-        self.hid_board = Board(size[0], size[1])
-        self.hid_board.generate_bombs()
-        self.hid_board.show_board()
-        self.board = Board(size[0], size[1])
+        self.boards = Board(size[0], size[1])
+        self.boards.generate_bombs()
+        self.boards.show_board(self.boards.shown_board)
+        self.choice()
 
     def start_game(self):
         print("What difficulty do you prefer? <Easy: 8 x 10> <Medium: 14 x 18> <Hard: 20 x 24>")
-        r=0
-        c=0
+        r = 0
+        c = 0
         i = int(input("Enter 1 for Easy, 2 for Medium, 3 for Hard\n"))
         if i not in [1, 2, 3]:
             print("Not valid, try again")
-            self.start_game()
+            self.__init__(self.name)
         if i == 1:
             r, c = 8, 10
         elif i == 2:
@@ -117,11 +128,64 @@ class Player:
             r, c = 20, 24
         return [r, c]
 
+    def make_move(self):
+        r = int(input("Make a move: \nEnter the row number\n"))
+        if r-1 not in range(self.boards.rows):
+            if r == 0:
+                exit()
+            else:
+                print("Not valid, try again")
+                self.make_move()
+        c = int(input("Enter the column number \n"))
+        if c-1 not in range(self.boards.columns):
+            if c == 0:
+                exit()
+            print("Not valid, try again")
+            self.make_move()
+
+        self.boards.shown_board[r-1][c-1] = self.boards.hid_board[r-1][c-1]
+        self.boards.show_board(self.boards.shown_board)
+
+        if self.boards.shown_board[r-1][c-1] == "*":
+            print(" ----- You Lose -----")
+            exit()
+        if self.boards.check_win == True:
+            print(" ----- You win ------ ")
+            exit()
+
+        self.choice()
+
+    def choice(self):
+        ch = input("Enter f to put flag or m to make move\n").lower()
+        if ch == "m":
+            self.make_move()
+        elif ch == "f":
+            self.put_flag()
+        else:
+            print("not valid, try again")
+            self.choice()
+
+    def put_flag(self):
+        r = int(input("Put a flag: \nEnter the row number\n"))
+        if r-1 not in range(self.boards.rows):
+            if r == 0:
+                exit()
+            else:
+                print("Not valid, try again")
+                self.put_flag()
+        c = int(input("Enter the column number \n"))
+        if c-1 not in range(self.boards.columns):
+            if c == 0:
+                exit()
+            print("Not valid, try again")
+            self.put_flag()
+
+        self.boards.shown_board[r-1][c-1] = "F"
+        self.boards.show_board(self.boards.shown_board)
+        if self.boards.check_win == True:
+            print(" ----- You win ------ ")
+            exit()
+        self.choice()
+
 
 kees = Player("kees")
-
-# hid_board = Board(r, c)
-# board = Board(r, c)
-# board.show_board()
-# board.generate_bombs()
-# board.show_board()
